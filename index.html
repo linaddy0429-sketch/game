@@ -1,0 +1,2195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2D 格鬥遊戲 v1.7.0 - Synthesis</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans TC', 'Orbitron', sans-serif;
+            background-color: #0b0f19;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            touch-action: none; /* 防止手機瀏覽器預設縮放與手勢 */
+        }
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* 霓虹發光特效 */
+        .neon-border {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            border: 1px solid rgba(59, 130, 246, 0.8);
+        }
+        .neon-border-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+            border: 1px solid rgba(239, 68, 68, 0.8);
+        }
+        .neon-text-blue {
+            text-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+        }
+        .neon-text-red {
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+        }
+        /* 隱藏滾動條 */
+        ::-webkit-scrollbar {
+            width: 0px;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center text-white relative">
+
+    <!-- 主背景：科技風暗色微粒漸層 -->
+    <div class="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0d1527] to-slate-950 z-0"></div>
+
+    <!-- ==================== 大廳介面 ==================== -->
+    <div id="lobby" class="relative z-10 w-full max-w-5xl p-4 md:p-6 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-800 shadow-2xl flex flex-col gap-4 max-h-[98vh] overflow-y-auto">
+        <div class="text-center relative">
+            <h1 class="orbitron text-3xl md:text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 py-1">
+                CYBER ARENA
+            </h1>
+            <p class="text-[10px] md:text-xs text-slate-400 tracking-widest uppercase">2D Fighting Masterpiece - State Machine System</p>
+        </div>
+
+        <!-- 模式與難度選擇 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- 模式選擇 -->
+            <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/50">
+                <h3 class="text-slate-300 text-xs md:text-sm font-bold mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-gamepad text-blue-400"></i> 選擇遊戲模式 Mode
+                </h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-mode-ai" onclick="selectMode('ai')" class="py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-bold transition duration-200 border border-blue-400 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                        <i class="fa-solid fa-robot"></i> 玩家 VS AI
+                    </button>
+                    <button id="btn-mode-pvp" onclick="selectMode('pvp')" class="py-2 px-3 rounded-lg bg-slate-755 hover:bg-slate-700 text-sm font-bold transition duration-200 border border-slate-600 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-user-group"></i> 雙人 PVP
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI 難度選擇 (僅在 AI 模式顯示) -->
+            <div id="ai-difficulty-panel" class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/50 transition-all duration-300">
+                <h3 class="text-slate-300 text-xs md:text-sm font-bold mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-indigo-400"></i> AI 難度 Difficulty
+                </h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="btn-diff-easy" onclick="selectDifficulty('easy')" class="py-1.5 rounded-lg bg-slate-755 hover:bg-slate-700 text-xs font-semibold transition border border-slate-600">
+                        簡單
+                    </button>
+                    <button id="btn-diff-normal" onclick="selectDifficulty('normal')" class="py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold transition border border-indigo-400 shadow-lg shadow-indigo-500/20">
+                        普通
+                    </button>
+                    <button id="btn-diff-hard" onclick="selectDifficulty('hard')" class="py-1.5 rounded-lg bg-slate-755 hover:bg-slate-700 text-xs font-semibold transition border border-slate-600">
+                        困難
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 選角區與詳細說明 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 my-1">
+            <!-- 玩家 1 選角與詳細資訊 (動態數據渲染) -->
+            <div class="flex flex-col gap-2 bg-slate-950/40 p-3 rounded-xl border border-blue-900/20">
+                <h3 class="text-blue-400 font-bold text-xs tracking-wider uppercase flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> 玩家一 PLAYER 1 (P1)
+                </h3>
+                <div class="grid grid-cols-3 gap-1.5" id="p1-class-grid">
+                    <!-- JS 動態插入 -->
+                </div>
+                <!-- 玩家一詳細資訊面板 (動態由 Schema 驅動) -->
+                <div id="p1-preview" class="bg-gradient-to-b from-blue-950/30 to-slate-900/90 p-3 rounded-lg border border-blue-900/40 flex flex-col gap-1.5 min-h-[220px]">
+                    <!-- 動態生成內容 -->
+                </div>
+            </div>
+
+            <!-- 玩家 2 或 AI 選角與詳細資訊 -->
+            <div class="flex flex-col gap-2 bg-slate-950/40 p-3 rounded-xl border border-red-900/20">
+                <h3 class="text-red-400 font-bold text-xs tracking-wider uppercase flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> <span id="p2-title-label">電腦 AI (P2)</span>
+                </h3>
+                <div class="grid grid-cols-3 gap-1.5" id="p2-class-grid">
+                    <!-- JS 動態插入 -->
+                </div>
+                <!-- 玩家二詳細資訊面板 -->
+                <div id="p2-preview" class="bg-gradient-to-b from-red-950/30 to-slate-900/90 p-3 rounded-lg border border-red-900/40 flex flex-col gap-1.5 min-h-[220px]">
+                    <!-- 動態生成內容 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作說明提示 -->
+        <div class="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 text-xs text-slate-400 grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div id="p1-control-tip">
+                <!-- JS 動態寫入 P1 鍵盤提示 -->
+            </div>
+            <div id="p2-control-tip">
+                <!-- JS 動態寫入 P2 鍵盤提示 -->
+            </div>
+        </div>
+
+        <!-- 開始按鈕與版本控制欄 -->
+        <div class="flex flex-col md:flex-row gap-3 items-center justify-between mt-1 pt-2 border-t border-slate-800/60">
+            <!-- 智慧下載離線版 -->
+            <button onclick="downloadGameCode()" class="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1.5 bg-slate-950/40 px-3 py-1.5 rounded-lg border border-slate-800/80 transition active:scale-95">
+                <i class="fa-solid fa-download text-blue-400"></i> 下載單機版 (game-v1.7.0-synthesis.html)
+            </button>
+            
+            <!-- 大廳版本號標示 -->
+            <div class="orbitron text-xs text-slate-400 font-bold flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                <span>Version: <span class="text-indigo-400">v1.7.0 - Synthesis</span></span>
+            </div>
+        </div>
+
+        <button onclick="startGame()" class="orbitron w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 font-black text-lg tracking-widest shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition duration-150 border-t border-white/20">
+            READY TO FIGHT
+        </button>
+    </div>
+
+    <!-- ==================== 戰鬥 HUD ==================== -->
+    <div id="hud" class="hidden fixed top-0 left-0 right-0 z-20 p-4 max-w-7xl mx-auto w-full flex flex-col pointer-events-none">
+        <!-- 血條區 -->
+        <div class="grid grid-cols-7 items-center gap-2 md:gap-4">
+            <!-- P1 區塊 -->
+            <div class="col-span-3 flex flex-col items-start">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded text-xs font-bold bg-blue-600 text-white orbitron">P1</span>
+                    <span id="hud-p1-name" class="font-bold text-sm md:text-base text-blue-300">劍士</span>
+                </div>
+                <!-- 血條外框 -->
+                <div class="w-full h-4 md:h-6 bg-slate-950 rounded-full border border-blue-500/30 overflow-hidden relative shadow-inner">
+                    <div id="hud-p1-hp" class="h-full bg-gradient-to-r from-blue-600 to-cyan-400 w-full transition-all duration-75"></div>
+                    <div id="hud-p1-hp-back" class="absolute inset-0 bg-red-500/30 -z-10 w-full transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- 計時器 / 倒數 -->
+            <div class="col-span-1 flex flex-col items-center justify-center">
+                <div class="orbitron bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded-xl text-lg md:text-2xl font-black tracking-wider text-yellow-400 min-w-[50px] text-center shadow-lg shadow-black/40">
+                    <span id="game-timer">99</span>
+                </div>
+            </div>
+
+            <!-- P2 / AI 區塊 -->
+            <div class="col-span-3 flex flex-col items-end">
+                <div class="flex items-center gap-2 mb-1">
+                    <span id="hud-p2-name" class="font-bold text-sm md:text-base text-red-300">法師</span>
+                    <span id="hud-p2-label" class="px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white orbitron">AI</span>
+                </div>
+                <!-- 血條外框 -->
+                <div class="w-full h-4 md:h-6 bg-slate-950 rounded-full border border-red-500/30 overflow-hidden relative shadow-inner flex justify-end">
+                    <div id="hud-p2-hp" class="h-full bg-gradient-to-l from-red-600 to-orange-400 w-full transition-all duration-75"></div>
+                    <div id="hud-p2-hp-back" class="absolute inset-0 bg-red-500/30 -z-10 w-full transition-all duration-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 技能冷卻與版本小字 (HUD 底部) -->
+        <div class="flex justify-between items-center mt-3">
+            <!-- P1 技能 CD (提示鍵對齊 W / E) -->
+            <div class="flex gap-2">
+                <div class="relative bg-slate-950/80 border border-blue-500/30 p-1 rounded-lg flex items-center gap-2 px-2.5">
+                    <span class="text-[10px] text-blue-400 font-bold">技能 1 [<span id="p1-s1-key">W</span>]</span>
+                    <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center relative overflow-hidden text-xs">
+                        <span id="p1-skill1-icon">🔮</span>
+                        <div id="p1-skill1-cd" class="absolute inset-0 bg-black/70 flex items-center justify-center text-[10px] text-white font-black opacity-0">CD</div>
+                    </div>
+                </div>
+                <div class="relative bg-slate-950/80 border border-blue-500/30 p-1 rounded-lg flex items-center gap-2 px-2.5">
+                    <span class="text-[10px] text-blue-400 font-bold">技能 2 [<span id="p1-s2-key">E</span>]</span>
+                    <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center relative overflow-hidden text-xs">
+                        <span id="p1-skill2-icon">⚡</span>
+                        <div id="p1-skill2-cd" class="absolute inset-0 bg-black/70 flex items-center justify-center text-[10px] text-white font-black opacity-0">CD</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- P2 技能 CD (提示鍵對齊 [ / ]) -->
+            <div class="flex gap-2 animate-fade-in" id="p2-skills-hud">
+                <div class="relative bg-slate-950/80 border border-red-500/30 p-1 rounded-lg flex items-center gap-2 px-2.5">
+                    <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center relative overflow-hidden text-xs">
+                        <span id="p2-skill1-icon">🔥</span>
+                        <div id="p2-skill1-cd" class="absolute inset-0 bg-black/70 flex items-center justify-center text-[10px] text-white font-black opacity-0">CD</div>
+                    </div>
+                    <span class="text-[10px] text-red-400 font-bold">技能 1 [<span id="p2-s1-key">[</span>]</span>
+                </div>
+                <div class="relative bg-slate-950/80 border border-red-500/30 p-1 rounded-lg flex items-center gap-2 px-2.5">
+                    <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center relative overflow-hidden text-xs">
+                        <span id="p2-skill2-icon">☄️</span>
+                        <div id="p2-skill2-cd" class="absolute inset-0 bg-black/70 flex items-center justify-center text-[10px] text-white font-black opacity-0">CD</div>
+                    </div>
+                    <span class="text-[10px] text-red-400 font-bold">技能 2 [<span id="p2-s2-key">]</span>]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 戰鬥畫面右下角小字 -->
+    <div id="battle-version-tag" class="hidden fixed bottom-3 right-4 z-25 orbitron text-[10px] text-slate-500 font-semibold pointer-events-none tracking-widest">
+        v1.7.0
+    </div>
+
+    <!-- ==================== 戰鬥 Canvas ==================== -->
+    <div id="canvas-container" class="hidden relative z-5 border border-slate-800 rounded-lg overflow-hidden shadow-2xl bg-[#090d16]">
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- ==================== 倒數計時與宣告螢幕 ==================== -->
+    <div id="announcement-screen" class="hidden fixed inset-0 z-30 pointer-events-none flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+        <h1 id="announcement-text" class="orbitron text-8xl md:text-9xl font-extrabold tracking-widest text-yellow-400 animate-bounce transition-all duration-300 neon-text-blue">
+            3
+        </h1>
+    </div>
+
+    <!-- ==================== 暫停選單 (Esc) ==================== -->
+    <div id="pause-screen" class="hidden fixed inset-0 z-40 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center gap-6">
+        <h2 class="orbitron text-5xl font-black tracking-widest text-blue-400 animate-pulse">PAUSED</h2>
+        <div class="flex flex-col gap-3 w-64">
+            <button onclick="resumeGame()" class="py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition">繼續戰鬥</button>
+            <button onclick="exitToLobby()" class="py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold transition">返回大廳</button>
+        </div>
+    </div>
+
+    <!-- ==================== 結算畫面 ==================== -->
+    <div id="victory-screen" class="hidden fixed inset-0 z-40 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center gap-6">
+        <div class="text-center">
+            <div class="text-yellow-400 text-5xl mb-4"><i class="fa-solid fa-crown animate-bounce"></i></div>
+            <h2 id="victory-title" class="orbitron text-5xl md:text-6xl font-black tracking-widest text-white neon-text-blue mb-2">PLAYER 1 WIN</h2>
+            <p id="victory-desc" class="text-slate-400 text-sm">一場精彩的榮譽對決！</p>
+        </div>
+        <div class="flex flex-col gap-3 w-64 mt-4">
+            <button onclick="rematch()" class="py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl font-bold transition shadow-lg shadow-blue-500/20">再來一場</button>
+            <button onclick="exitToLobby()" class="py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold transition">返回大廳</button>
+        </div>
+    </div>
+
+    <!-- ==================== 手機/平板虛擬按鍵 (統一管理系統容器) ==================== -->
+    <div id="touch-overlay" class="hidden fixed inset-0 z-35 pointer-events-none select-none">
+        
+        <!-- P1 觸控操作組 (畫面左下側) -->
+        <div id="p1-touch-controls" class="absolute bottom-3 left-3 pointer-events-auto flex gap-4 items-end">
+            <!-- P1 移動方向控制 (D-Pad) -->
+            <div class="flex gap-1.5 items-center">
+                <button id="touch-p1-left" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-blue-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-left"></i></button>
+                <div class="flex flex-col gap-1">
+                    <button id="touch-p1-up" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-blue-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-up"></i></button>
+                    <button id="touch-p1-down" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-blue-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-down"></i></button>
+                </div>
+                <button id="touch-p1-right" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-blue-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+            <!-- P1 招式按鍵 -->
+            <div class="flex flex-col gap-1.5 items-start">
+                <div class="flex gap-1.5">
+                    <button id="touch-p1-skill1" class="w-12 h-12 bg-slate-800/80 active:bg-indigo-600 border border-indigo-700 rounded-lg flex flex-col items-center justify-center text-xs text-white relative overflow-hidden shadow-lg active:scale-95 transition-all">
+                        <span id="touch-p1-s1-icon">🔮</span>
+                        <span class="text-[8px] opacity-70">技 1</span>
+                        <div id="touch-p1-s1-cd" class="absolute inset-0 bg-black/75 flex items-center justify-center text-[10px] font-bold opacity-0">CD</div>
+                    </button>
+                    <button id="touch-p1-skill2" class="w-12 h-12 bg-slate-800/80 active:bg-purple-600 border border-purple-700 rounded-lg flex flex-col items-center justify-center text-xs text-white relative overflow-hidden shadow-lg active:scale-95 transition-all">
+                        <span id="touch-p1-s2-icon">⚡</span>
+                        <span class="text-[8px] opacity-70">技 2</span>
+                        <div id="touch-p1-s2-cd" class="absolute inset-0 bg-black/75 flex items-center justify-center text-[10px] font-bold opacity-0">CD</div>
+                    </button>
+                </div>
+                <button id="touch-p1-attack" class="w-24 h-12 md:w-26 md:h-14 bg-red-600/90 active:bg-red-500 border border-red-500 rounded-xl flex items-center justify-center text-sm md:text-base font-extrabold text-white shadow-xl active:scale-95 transition-all tracking-wider">攻擊</button>
+            </div>
+        </div>
+
+        <!-- 系統輔助控制組 (畫面中下方) -->
+        <div id="global-touch-controls" class="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-auto flex gap-2">
+            <button onclick="togglePause()" class="px-3.5 py-2 bg-slate-800/80 active:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-300">暫停</button>
+            <button onclick="toggleDebug()" class="px-3.5 py-2 bg-slate-800/80 active:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-300">Debug (F3)</button>
+        </div>
+
+        <!-- P2 觸控操作組 (畫面右下側 - 僅在 PVP 模式下顯示) -->
+        <div id="p2-touch-controls" class="absolute bottom-3 right-3 pointer-events-auto flex gap-4 items-end flex-row-reverse">
+            <!-- P2 移動方向控制 (D-Pad) -->
+            <div class="flex gap-1.5 items-center">
+                <button id="touch-p2-left" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-red-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-left"></i></button>
+                <div class="flex flex-col gap-1">
+                    <button id="touch-p2-up" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-red-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-up"></i></button>
+                    <button id="touch-p2-down" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-red-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-down"></i></button>
+                </div>
+                <button id="touch-p2-right" class="w-12 h-12 md:w-14 md:h-14 bg-slate-800/80 active:bg-red-600 border border-slate-700 rounded-xl flex items-center justify-center text-xl md:text-2xl text-white shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+            <!-- P2 招式按鍵 -->
+            <div class="flex flex-col gap-1.5 items-end">
+                <div class="flex gap-1.5">
+                    <button id="touch-p2-skill1" class="w-12 h-12 bg-slate-800/80 active:bg-indigo-600 border border-indigo-700 rounded-lg flex flex-col items-center justify-center text-xs text-white relative overflow-hidden shadow-lg active:scale-95 transition-all">
+                        <span id="touch-p2-s1-icon">🔥</span>
+                        <span class="text-[8px] opacity-70">技 1</span>
+                        <div id="touch-p2-s1-cd" class="absolute inset-0 bg-black/75 flex items-center justify-center text-[10px] font-bold opacity-0">CD</div>
+                    </button>
+                    <button id="touch-p2-skill2" class="w-12 h-12 bg-slate-800/80 active:bg-purple-600 border border-purple-700 rounded-lg flex flex-col items-center justify-center text-xs text-white relative overflow-hidden shadow-lg active:scale-95 transition-all">
+                        <span id="touch-p2-s2-icon">☄️</span>
+                        <span class="text-[8px] opacity-70">技 2</span>
+                        <div id="touch-p2-s2-cd" class="absolute inset-0 bg-black/75 flex items-center justify-center text-[10px] font-bold opacity-0">CD</div>
+                    </button>
+                </div>
+                <button id="touch-p2-attack" class="w-24 h-12 md:w-26 md:h-14 bg-red-600/90 active:bg-red-500 border border-red-500 rounded-xl flex items-center justify-center text-sm md:text-base font-extrabold text-white shadow-xl active:scale-95 transition-all tracking-wider">攻擊</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== JavaScript 遊戲邏輯 ==================== -->
+    <script>
+        // --- v1.7.0 統一狀態機定義 GameState (唯一狀態來源) ---
+        const GameState = {
+            mode: 'ai',           // 'ai' | 'pvp'
+            difficulty: 'normal', // 'easy' | 'normal' | 'hard'
+            screen: 'lobby',      // 'lobby' | 'match' | 'pause' | 'victory'
+            isGameRunning: false, // 決定實體物理迴圈是否執行
+            isPaused: false,      // 決定實體物理是否暫停
+            debugMode: false,     // F3 受擊框偵錯開關
+            touchEnabled: false,  // 手機平板觸控偵測
+            p1Class: 'sword',     // 玩家一當前職業
+            p2Class: 'mage',      // 玩家二或AI當前職業
+            winner: null,         // 當局勝者 'p1' | 'p2' | 'ai' | 'draw'
+            timer: 99             // 倒數計時
+        };
+
+        // --- 核心系統常數與狀態 ---
+        const GAME_WIDTH = 1024;
+        const GAME_HEIGHT = 576;
+        const GRAVITY = 0.6;
+        const GROUND_Y = 480;
+
+        // --- 狀態機控制介面 (Mode / UI / Input / AI 同步核心) ---
+        
+        // 1. 所有模式與難度切換，均強制經由 setMode() 中央調度
+        function setMode(newMode) {
+            GameState.mode = newMode;
+            syncInput();
+            syncAI();
+            syncUI();
+        }
+
+        // 螢幕切換控制
+        function setScreen(newScreen) {
+            GameState.screen = newScreen;
+            syncUI();
+        }
+
+        // 2. 獨立 UI 同步層 (syncUI) - 統一管理所有 DOM 操作，拒絕 loop 中操縱 DOM
+        function syncUI() {
+            const lobbyEl = document.getElementById('lobby');
+            const hudEl = document.getElementById('hud');
+            const canvasContainerEl = document.getElementById('canvas-container');
+            const pauseScreen = document.getElementById('pause-screen');
+            const victoryScreen = document.getElementById('victory-screen');
+            const battleVersionTag = document.getElementById('battle-version-tag');
+            const touchOverlayEl = document.getElementById('touch-overlay');
+            const p1TouchEl = document.getElementById('p1-touch-controls');
+            const p2TouchEl = document.getElementById('p2-touch-controls');
+
+            // 結構化隱藏全部主要組件
+            hideElement(lobbyEl);
+            hideElement(hudEl);
+            hideElement(canvasContainerEl);
+            hideElement(pauseScreen);
+            hideElement(victoryScreen);
+            hideElement(battleVersionTag);
+            hideElement(touchOverlayEl);
+
+            // 根據目前狀態機指示顯示
+            if (GameState.screen === 'lobby') {
+                showElement(lobbyEl);
+            } else if (GameState.screen === 'match') {
+                showElement(hudEl);
+                showElement(canvasContainerEl);
+                showElement(battleVersionTag);
+                
+                // 行動觸控適應
+                if (GameState.touchEnabled) {
+                    showElement(touchOverlayEl);
+                    showElement(p1TouchEl);
+                    if (GameState.mode === 'pvp') {
+                        showElement(p2TouchEl);
+                    } else {
+                        hideElement(p2TouchEl);
+                    }
+                }
+            } else if (GameState.screen === 'pause') {
+                showElement(hudEl);
+                showElement(canvasContainerEl);
+                showElement(pauseScreen);
+            } else if (GameState.screen === 'victory') {
+                showElement(hudEl);
+                showElement(canvasContainerEl);
+                showElement(victoryScreen);
+            }
+
+            // 大廳選單按鈕霓虹發光狀態同步
+            const btnAI = document.getElementById('btn-mode-ai');
+            const btnPVP = document.getElementById('btn-mode-pvp');
+            if (GameState.mode === 'ai') {
+                btnAI.className = "py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-bold transition border border-blue-400 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20";
+                btnPVP.className = "py-2 px-3 rounded-lg bg-slate-755 hover:bg-slate-700 text-sm font-bold transition border border-slate-600 flex items-center justify-center gap-2";
+                showElement(document.getElementById('ai-difficulty-panel'));
+                document.getElementById('p2-title-label').innerText = `電腦 AI (P2)`;
+                hideElement(document.getElementById('p2-control-tip'));
+            } else {
+                btnAI.className = "py-2 px-3 rounded-lg bg-slate-755 hover:bg-slate-700 text-sm font-bold transition border border-slate-600 flex items-center justify-center gap-2";
+                btnPVP.className = "py-2 px-3 rounded-lg bg-red-600 hover:bg-red-500 text-sm font-bold transition border border-red-400 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20";
+                hideElement(document.getElementById('ai-difficulty-panel'));
+                document.getElementById('p2-title-label').innerText = `玩家二 PLAYER 2 (P2)`;
+                showElement(document.getElementById('p2-control-tip'));
+            }
+
+            // AI 難度按鈕樣式同步
+            const btnEasy = document.getElementById('btn-diff-easy');
+            const btnNorm = document.getElementById('btn-diff-normal');
+            const btnHard = document.getElementById('btn-diff-hard');
+            [btnEasy, btnNorm, btnHard].forEach(b => {
+                b.className = "py-1.5 rounded-lg bg-slate-755 hover:bg-slate-700 text-xs font-semibold transition border border-slate-600";
+            });
+            if (GameState.difficulty === 'easy') {
+                btnEasy.className = "py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-xs font-semibold transition border border-green-400 shadow-lg shadow-green-500/20";
+            } else if (GameState.difficulty === 'normal') {
+                btnNorm.className = "py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold transition border border-indigo-400 shadow-lg shadow-indigo-500/20";
+            } else {
+                btnHard.className = "py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold transition border border-rose-400 shadow-lg shadow-rose-500/20";
+            }
+
+            // 熱鍵提示文字刷新
+            const p1Tip = document.getElementById('p1-control-tip');
+            const p2Tip = document.getElementById('p2-control-tip');
+            p1Tip.innerHTML = `<span class="text-blue-400 font-semibold">P1 鍵盤：</span> RFDG 移動/跳/蹲 | Q 普攻 | W 技能 1 | E 技能 2`;
+            if (GameState.mode === 'pvp') {
+                p2Tip.innerHTML = `<span class="text-red-400 font-semibold">P2 鍵盤：</span> OLK; 移動/跳/蹲 | P 普攻 | [ 技能 1 | ] 技能 2`;
+            }
+
+            // 重新渲染選角左右預覽面版 (動態解讀 Schema)
+            UIManager.updatePreviews();
+        }
+
+        // 3. 獨立輸入同步層 (syncInput) - 重置清除所有輸入物理記憶
+        function syncInput() {
+            InputLayer.states.p1 = { left: false, right: false, crouch: false };
+            InputLayer.states.p2 = { left: false, right: false, crouch: false };
+            gameManager.keys = {};
+        }
+
+        // 4. 獨立 AI 控制器同步層 (syncAI)
+        function syncAI() {
+            if (GameState.mode === 'ai' && GameState.screen === 'match' && gameManager.p2 && gameManager.p1) {
+                gameManager.aiCtrl = new AIController(gameManager.p2, gameManager.p1, GameState.difficulty);
+                document.getElementById('hud-p2-label').innerText = `AI: ${GameState.difficulty.toUpperCase()}`;
+                document.getElementById('p2-skills-hud').classList.add('opacity-40');
+                document.getElementById('p2-s1-key').innerText = '-';
+                document.getElementById('p2-s2-key').innerText = '-';
+            } else {
+                gameManager.aiCtrl = null;
+                document.getElementById('hud-p2-label').innerText = 'P2';
+                document.getElementById('p2-skills-hud').classList.remove('opacity-40');
+                document.getElementById('p2-s1-key').innerText = '[';
+                document.getElementById('p2-s2-key').innerText = ']';
+            }
+        }
+
+        // Helper DOM togglers
+        function showElement(el) { if (el) el.classList.remove('hidden'); }
+        function hideElement(el) { if (el) el.classList.add('hidden'); }
+
+        // --- 1. 職業系統 CharacterClasses (所有技能遵循統一的 Skill Schema) ---
+        const CharacterClasses = {
+            sword: {
+                id: 'sword',
+                name: '劍士',
+                icon: '⚔️',
+                role: '近戰平衡型',
+                hp: 1800,
+                speed: 4.5,
+                jumpForce: 13,
+                color: '#3b82f6', 
+                skills: {
+                    attack: {
+                        name: '橫掃斬擊',
+                        type: 'attack',
+                        damage: 100,
+                        cooldown: 0.5,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 100, width: 110, height: 80, icon: '⚔️'
+                    },
+                    skill1: {
+                        name: '衝鋒斬',
+                        type: 'dash',
+                        damage: 220,
+                        cooldown: 4.0,
+                        move: { enabled: true, distance: 14 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 130, width: 140, height: 100, icon: '🌀'
+                    },
+                    skill2: {
+                        name: '旋風斬',
+                        type: 'attack',
+                        damage: 320,
+                        cooldown: 8.0,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 180, width: 180, height: 60, icon: '⚡'
+                    }
+                }
+            },
+            mage: {
+                id: 'mage',
+                name: '法師',
+                icon: '🔥',
+                role: '遠程爆發型',
+                hp: 1400,
+                speed: 3.8,
+                jumpForce: 11,
+                color: '#ec4899', 
+                skills: {
+                    attack: {
+                        name: '魔法射擊',
+                        type: 'attack',
+                        damage: 104,
+                        cooldown: 0.5,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        isProjectile: true, projSpeed: 8, projSize: 12, color: '#f472b6', icon: '🪄'
+                    },
+                    skill1: { 
+                        name: '火球術', 
+                        type: 'dot', 
+                        damage: 180, 
+                        cooldown: 5.0, 
+                        move: { enabled: false, distance: 0 }, 
+                        statusEffect: { slow: 0, burn: 0.01, duration: 4.0 }, 
+                        isProjectile: true, projSpeed: 10, projSize: 22, color: '#f97316', icon: '🔮'
+                    },
+                    skill2: { 
+                        name: '冰霜爆發', 
+                        type: 'attack', 
+                        damage: 250, 
+                        cooldown: 9.0, 
+                        move: { enabled: false, distance: 0 }, 
+                        statusEffect: { slow: 0.4, burn: 0, duration: 3.0 }, 
+                        isProjectile: true, projSpeed: 12, projSize: 35, color: '#06b6d4', icon: '❄️'
+                    }
+                }
+            },
+            archer: {
+                id: 'archer',
+                name: '弓手',
+                icon: '🏹',
+                role: '遠程持續輸出型',
+                hp: 1500,
+                speed: 5.0,
+                jumpForce: 12.5,
+                color: '#10b981', 
+                skills: {
+                    attack: {
+                        name: '普通射擊',
+                        type: 'attack',
+                        damage: 105,
+                        cooldown: 0.4,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        isProjectile: true, projSpeed: 12, projSize: 8, color: '#10b981', icon: '🏹'
+                    },
+                    skill1: {
+                        name: '多重穿透箭',
+                        type: 'attack',
+                        damage: 160,
+                        cooldown: 4.5,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        isProjectile: true, projSpeed: 14, projSize: 12, color: '#34d399', count: 3, icon: '🎯'
+                    },
+                    skill2: {
+                        name: '追風強擊矢',
+                        type: 'attack',
+                        damage: 240,
+                        cooldown: 8.0,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        isProjectile: true, projSpeed: 16, projSize: 16, color: '#059669', knockback: 25, icon: '🍃'
+                    }
+                }
+            },
+            assassin: {
+                id: 'assassin',
+                name: '刺客',
+                icon: '⚡',
+                role: '高機動爆發型',
+                hp: 1300,
+                speed: 6.0,
+                jumpForce: 15,
+                color: '#a855f7', 
+                skills: {
+                    attack: {
+                        name: '匕首刺擊',
+                        type: 'attack',
+                        damage: 85,
+                        cooldown: 0.35,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 65, width: 80, height: 50, icon: '🗡️'
+                    },
+                    skill1: {
+                        name: '影襲',
+                        type: 'dash',
+                        damage: 180,
+                        cooldown: 3.5,
+                        move: { enabled: true, distance: 18 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 100, width: 110, height: 70, icon: '💨'
+                    },
+                    skill2: {
+                        name: '背刺',
+                        type: 'teleport',
+                        damage: 250,
+                        cooldown: 7.5,
+                        move: { enabled: true, distance: 0 }, 
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 140, width: 150, height: 90, teleport: 'behind', knockback: 20, icon: '🩸'
+                    }
+                }
+            },
+            paladin: {
+                id: 'paladin',
+                name: '聖騎士',
+                icon: '🛡️',
+                role: '坦克防禦型',
+                hp: 2200,
+                speed: 3.4,
+                jumpForce: 10.5,
+                color: '#eab308', 
+                skills: {
+                    attack: {
+                        name: '重盾擊',
+                        type: 'attack',
+                        damage: 90,
+                        cooldown: 0.6,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 110, width: 120, height: 90, icon: '🛡️'
+                    },
+                    skill1: {
+                        name: '神聖衝擊',
+                        type: 'dash',
+                        damage: 180,
+                        cooldown: 5.0,
+                        move: { enabled: true, distance: 13 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 140, width: 150, height: 80, icon: '☀️'
+                    },
+                    skill2: {
+                        name: '守護光環',
+                        type: 'buff',
+                        damage: 260,
+                        cooldown: 10.0,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 120, width: 140, height: 120, icon: '🔱'
+                    }
+                }
+            },
+            berserker: {
+                id: 'berserker',
+                name: '狂戰士',
+                icon: '🪓',
+                role: '高風險高回報',
+                hp: 1900,
+                speed: 4.2,
+                jumpForce: 12,
+                color: '#dc2626', 
+                skills: {
+                    attack: {
+                        name: '重斧揮擊',
+                        type: 'attack',
+                        damage: 110,
+                        cooldown: 0.6,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 105, width: 120, height: 90, icon: '🪓'
+                    },
+                    skill1: {
+                        name: '狂怒斬',
+                        type: 'dash',
+                        damage: 230,
+                        cooldown: 4.5,
+                        move: { enabled: true, distance: 8 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 120, width: 130, height: 100, icon: '💢'
+                    },
+                    skill2: {
+                        name: '狂暴',
+                        type: 'buff',
+                        damage: 340,
+                        cooldown: 9.0,
+                        move: { enabled: false, distance: 0 },
+                        statusEffect: { slow: 0, burn: 0, duration: 0 },
+                        range: 160, width: 170, height: 110, icon: '🩸'
+                    }
+                }
+            }
+        };
+
+        // --- 2. 視覺特效與粒子管理 ---
+        class Particle {
+            constructor(x, y, color, vx, vy, size, life) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.vx = vx;
+                this.vy = vy;
+                this.size = size;
+                this.life = life;
+                this.maxLife = life;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1; 
+                this.life--;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // 投射物
+        class Projectile {
+            constructor(owner, x, y, dir, skillData, skillType) {
+                this.owner = owner; 
+                this.x = x;
+                this.y = y;
+                this.dir = dir; 
+                this.skillData = skillData;
+                this.skillType = skillType; 
+                
+                this.speed = skillData.projSpeed * dir;
+                this.size = skillData.projSize;
+                this.color = skillData.color;
+                this.damage = skillData.damage;
+                this.active = true;
+                this.angle = 0;
+            }
+
+            update() {
+                this.x += this.speed;
+                this.angle += 0.1 * this.dir;
+
+                if (this.x < -100 || this.x > GAME_WIDTH + 100) {
+                    this.active = false;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+
+                if (this.skillData.count && this.skillData.count > 1) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle);
+                    ctx.beginPath();
+                    ctx.moveTo(-this.size, -this.size / 2);
+                    ctx.lineTo(this.size, 0);
+                    ctx.lineTo(-this.size, this.size / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            getHurtbox() {
+                return {
+                    x: this.x - this.size,
+                    y: this.y - this.size,
+                    width: this.size * 2,
+                    height: this.size * 2
+                };
+            }
+        }
+
+        // --- 3. 核心格鬥角色類別 Player ---
+        class Player {
+            constructor(id, x, y, charClass) {
+                this.id = id; 
+                this.x = x;
+                this.y = y;
+                this.width = 65;
+                this.height = 110;
+                
+                this.classData = CharacterClasses[charClass];
+                this.hp = this.classData.hp;
+                this.maxHp = this.classData.hp;
+                this.baseSpeed = this.classData.speed;
+                this.speed = this.classData.speed;
+                this.jumpForce = this.classData.jumpForce;
+                this.color = this.classData.color;
+
+                this.vx = 0;
+                this.vy = 0;
+                this.isGrounded = false;
+                this.isCrouching = false;
+                this.dir = id === 'p1' ? 1 : -1; 
+
+                // 狀態機
+                this.isHit = false;
+                this.hitTime = 0;
+                this.isAttacking = false;
+                this.attackProgress = 0; 
+                this.currentAttackType = null; 
+                
+                // 特殊 Buff / 狀態效果系統
+                this.defenseBuffTimer = 0; 
+                this.rageBuffTimer = 0;    
+                this.effects = [];         
+
+                // 冷卻狀態
+                this.cooldowns = {
+                    attack: 0,
+                    skill1: 0,
+                    skill2: 0
+                };
+
+                // 物理碰撞盒 (Hurtbox)
+                this.hurtbox = { x: 0, y: 0, width: 0, height: 0 };
+                // 攻擊判定盒 (Hitbox)
+                this.hitbox = null;
+
+                // 動態特效
+                this.opacity = 1;
+                this.flashDuration = 0;
+            }
+
+            // 💥 統一擊退物理公式：knockback = baseValue + (damage * coefficient)
+            calculateKnockback(damage, skillType) {
+                let baseValue = 4.0; 
+                if (skillType === 'skill1') baseValue = 8.0;   
+                if (skillType === 'skill2') baseValue = 13.0;  
+                
+                const coefficient = 0.025; 
+                return baseValue + (damage * coefficient);
+            }
+
+            update() {
+                // 更新冷卻時間
+                for (let k in this.cooldowns) {
+                    if (this.cooldowns[k] > 0) {
+                        this.cooldowns[k] -= 1/60;
+                        if (this.cooldowns[k] < 0) this.cooldowns[k] = 0;
+                    }
+                }
+
+                // 更新特殊狀態 Buff
+                if (this.defenseBuffTimer > 0) {
+                    this.defenseBuffTimer -= 1/60;
+                }
+
+                this.speed = this.baseSpeed;
+                
+                if (this.rageBuffTimer > 0) {
+                    this.rageBuffTimer -= 1/60;
+                    this.speed = this.baseSpeed * 1.5;
+                }
+
+                // 處理 effects (如減速 slow 與灼燒 burn DOT)
+                let slowMultiplier = 1.0;
+                this.effects = this.effects.filter(effect => {
+                    effect.duration -= 1/60;
+                    
+                    if (effect.type === 'slow') {
+                        slowMultiplier *= effect.value;
+                    }
+                    
+                    if (effect.type === 'burn') {
+                        const burnDmgPerFrame = (0.01 * this.maxHp) / 60;
+                        this.hp -= burnDmgPerFrame;
+                        if (this.hp < 0) this.hp = 0;
+
+                        if (Math.random() < 0.12 && typeof gameManager !== 'undefined') {
+                            gameManager.particles.push(new Particle(
+                                this.x + Math.random() * this.width,
+                                this.y + Math.random() * this.height,
+                                '#f97316',
+                                (Math.random() - 0.5) * 2,
+                                -Math.random() * 2 - 1,
+                                Math.random() * 3 + 1,
+                                Math.random() * 15 + 10
+                            ));
+                        }
+                    }
+                    return effect.duration > 0;
+                });
+                
+                this.speed *= slowMultiplier;
+
+                // 處理受擊硬直
+                if (this.isHit) {
+                    this.hitTime -= 1;
+                    if (this.hitTime <= 0) {
+                        this.isHit = false;
+                    }
+                    this.vx *= 0.85;
+                }
+
+                // 重力與水平位移
+                this.vy += GRAVITY;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.isGrounded && !this.isHit) {
+                    this.vx *= 0.75;
+                }
+
+                // 地板物理限制
+                const currentHeight = this.isCrouching ? this.height * 0.65 : this.height;
+                if (this.y + currentHeight >= GROUND_Y) {
+                    this.y = GROUND_Y - currentHeight;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                } else {
+                    this.isGrounded = false;
+                }
+
+                // 邊界限制
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > GAME_WIDTH) this.x = GAME_WIDTH - this.width;
+
+                this.hurtbox.x = this.x;
+                this.hurtbox.y = this.y;
+                this.hurtbox.width = this.width;
+                this.hurtbox.height = currentHeight;
+
+                // 處理攻擊動畫進度
+                if (this.isAttacking) {
+                    this.attackProgress += 0.08;
+                    
+                    const skillInfo = this.classData.skills[this.currentAttackType];
+                    
+                    // 根據 Skill Schema 移動設定，流暢推進座標 position.x
+                    if (skillInfo && skillInfo.move && skillInfo.move.enabled && skillInfo.move.distance > 0) {
+                        if (this.attackProgress > 0.15 && this.attackProgress < 0.65) {
+                            this.x += skillInfo.move.distance * this.dir;
+                        }
+                    }
+
+                    // 近戰 Hitbox 觸發範圍
+                    if (this.attackProgress >= 0.3 && this.attackProgress <= 0.7) {
+                        if (skillInfo && !skillInfo.isProjectile) {
+                            const hbW = skillInfo.width || 100;
+                            const hbH = skillInfo.height || 80;
+                            const hbX = this.dir === 1 ? (this.x + this.width) : (this.x - hbW);
+                            const hbY = this.y + (currentHeight - hbH) / 2;
+                            this.hitbox = { x: hbX, y: hbY, width: hbW, height: hbH, damage: skillInfo.damage };
+                        }
+                    } else {
+                        this.hitbox = null;
+                    }
+
+                    if (this.attackProgress >= 1) {
+                        this.isAttacking = false;
+                        this.hitbox = null;
+                        this.currentAttackType = null;
+                    }
+                }
+
+                if (this.flashDuration > 0) {
+                    this.flashDuration--;
+                    this.opacity = this.flashDuration % 4 < 2 ? 0.3 : 0.8;
+                } else {
+                    this.opacity = 1.0;
+                }
+            }
+
+            draw(ctx) {
+                const currentHeight = this.isCrouching ? this.height * 0.65 : this.height;
+
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+
+                if (this.effects.some(e => e.type === 'slow')) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#06b6d4';
+                } else if (this.effects.some(e => e.type === 'burn')) {
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = '#f97316';
+                } else if (this.defenseBuffTimer > 0) {
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = '#eab308';
+                } else if (this.rageBuffTimer > 0) {
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = '#dc2626';
+                } else {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = this.color;
+                }
+
+                // 身體
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.width, currentHeight, 10);
+                ctx.fill();
+
+                // 聖騎士盾特效
+                if (this.defenseBuffTimer > 0) {
+                    ctx.strokeStyle = 'rgba(234, 179, 8, 0.6)';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width/2, this.y + currentHeight/2, this.height/1.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // 狂戰士狂暴粒子
+                if (this.rageBuffTimer > 0) {
+                    ctx.fillStyle = 'rgba(220, 38, 38, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(this.x + Math.random()*this.width, this.y + Math.random()*currentHeight, 10, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                // 冰凍粒子
+                if (this.effects.some(e => e.type === 'slow')) {
+                    ctx.fillStyle = 'rgba(6, 182, 212, 0.5)';
+                    ctx.beginPath();
+                    ctx.arc(this.x + Math.random()*this.width, this.y + Math.random()*currentHeight, 8, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                // 灼燒火焰
+                if (this.effects.some(e => e.type === 'burn')) {
+                    ctx.fillStyle = 'rgba(249, 115, 22, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(this.x + Math.random()*this.width, this.y + Math.random()*currentHeight, 9, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                // 面部朝向特徵條
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                if (this.dir === 1) {
+                    ctx.moveTo(this.x + this.width - 15, this.y + 20);
+                    ctx.lineTo(this.x + this.width - 5, this.y + 20);
+                } else {
+                    ctx.moveTo(this.x + 5, this.y + 20);
+                    ctx.lineTo(this.x + 15, this.y + 20);
+                }
+                ctx.stroke();
+
+                // 揮砍軌跡
+                if (this.isAttacking) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    const centerX = this.x + this.width / 2;
+                    const centerY = this.y + currentHeight / 2;
+                    const swingAngle = (this.attackProgress * Math.PI) - (Math.PI / 2);
+
+                    if (this.dir === 1) {
+                        ctx.moveTo(centerX, centerY);
+                        ctx.lineTo(centerX + Math.cos(swingAngle) * 60, centerY + Math.sin(swingAngle) * 60);
+                    } else {
+                        ctx.moveTo(centerX, centerY);
+                        ctx.lineTo(centerX - Math.cos(swingAngle) * 60, centerY + Math.sin(swingAngle) * 60);
+                    }
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+
+                // Debug 描繪
+                if (debugMode) {
+                    ctx.strokeStyle = '#22c55e';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(this.hurtbox.x, this.hurtbox.y, this.hurtbox.width, this.hurtbox.height);
+                    ctx.fillStyle = '#22c55e';
+                    ctx.font = '10px monospace';
+                    ctx.fillText(`Hurtbox (${this.id.toUpperCase()})`, this.hurtbox.x, this.hurtbox.y - 4);
+
+                    if (this.hitbox) {
+                        ctx.strokeStyle = '#ef4444';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(this.hitbox.x, this.hitbox.y, this.hitbox.width, this.hitbox.height);
+                        ctx.fillStyle = '#ef4444';
+                        ctx.fillText(`Hitbox dmg:${this.hitbox.damage}`, this.hitbox.x, this.hitbox.y - 4);
+                    }
+                }
+            }
+
+            move(dir) {
+                if (this.isHit) return;
+                this.vx = dir * this.speed;
+                this.dir = dir;
+                this.isCrouching = false;
+            }
+
+            jump() {
+                if (this.isHit) return;
+                if (this.isGrounded) {
+                    this.vy = -this.jumpForce;
+                    this.isGrounded = false;
+                }
+            }
+
+            crouch(isCrouch) {
+                if (this.isHit) return;
+                this.isCrouching = isCrouch;
+                if (isCrouch) {
+                    this.vx *= 0.5;
+                }
+            }
+
+            useSkill(type, opponent = null) {
+                if (this.isHit || this.isAttacking) return null;
+                if (this.cooldowns[type] > 0) return null;
+
+                const skillInfo = this.classData.skills[type];
+                this.cooldowns[type] = skillInfo.cooldown;
+                this.isAttacking = true;
+                this.attackProgress = 0;
+                this.currentAttackType = type;
+
+                // 刺客背刺 (瞬間閃爍)
+                if (skillInfo.type === 'teleport' && skillInfo.teleport === 'behind' && opponent) {
+                    const targetX = opponent.x - (opponent.width * 1.35 * opponent.dir);
+                    if (typeof gameManager !== 'undefined') {
+                        gameManager.createHitParticles(this.x + this.width/2, this.y + this.height/2, this.color);
+                    }
+                    this.x = Math.max(20, Math.min(GAME_WIDTH - this.width - 20, targetX));
+                    this.dir = opponent.x > this.x ? 1 : -1;
+                    if (typeof gameManager !== 'undefined') {
+                        gameManager.createHitParticles(this.x + this.width/2, this.y + this.height/2, '#ffffff');
+                    }
+                }
+
+                // 特殊職業 Buff
+                if (this.classData.id === 'paladin' && type === 'skill2') {
+                    this.defenseBuffTimer = 3.0;
+                }
+                if (this.classData.id === 'berserker' && type === 'skill2') {
+                    this.rageBuffTimer = 3.5;
+                }
+
+                // 投射物
+                if (skillInfo.isProjectile) {
+                    const py = this.y + (this.isCrouching ? this.height * 0.35 : this.height * 0.4);
+                    const px = this.dir === 1 ? (this.x + this.width + 10) : (this.x - 10);
+                    
+                    if (skillInfo.count && skillInfo.count > 1) {
+                        let projs = [];
+                        for (let i = 0; i < skillInfo.count; i++) {
+                            const p = new Projectile(this.id, px, py - 15 + i * 15, this.dir, skillInfo, type);
+                            projs.push(p);
+                        }
+                        return projs;
+                    } else {
+                        return [new Projectile(this.id, px, py, this.dir, skillInfo, type)];
+                    }
+                }
+                return null;
+            }
+
+            // 受擊判定，引用統一擊退計算
+            takeDamage(dmg, skillType, attackerX) {
+                const knockbackForce = this.calculateKnockback(dmg, skillType);
+                
+                let finalDmg = dmg;
+                if (this.defenseBuffTimer > 0) {
+                    finalDmg = Math.round(dmg * 0.5);
+                }
+
+                this.hp -= finalDmg;
+                if (this.hp < 0) this.hp = 0;
+
+                this.isHit = true;
+                this.hitTime = 16;
+                this.flashDuration = 24;
+
+                const knockDir = this.x + this.width/2 > attackerX ? 1 : -1;
+                this.vx = knockDir * knockbackForce;
+                this.vy = -3;
+            }
+        }
+
+        // --- 4. 決策系統 AIController ---
+        class AIController {
+            constructor(player, opponent, difficulty) {
+                this.ai = player;
+                this.opponent = opponent;
+                this.difficulty = difficulty;
+                this.decisionTimer = 0;
+                this.currentAction = 'idle';
+            }
+
+            update() {
+                if (!this.ai || !this.opponent || this.ai.hp <= 0 || this.opponent.hp <= 0) return;
+
+                this.decisionTimer--;
+                if (this.decisionTimer <= 0) {
+                    if (this.difficulty === 'easy') {
+                        this.decisionTimer = 45 + Math.random() * 30;
+                    } else if (this.difficulty === 'normal') {
+                        this.decisionTimer = 20 + Math.random() * 15;
+                    } else {
+                        this.decisionTimer = 6 + Math.random() * 6;
+                    }
+                    this.decideAction();
+                }
+                this.executeAction();
+            }
+
+            decideAction() {
+                const aiX = this.ai.x + this.ai.width / 2;
+                const oppX = this.opponent.x + this.opponent.width / 2;
+                const dist = Math.abs(aiX - oppX);
+                const randomVal = Math.random();
+
+                this.ai.dir = oppX > aiX ? 1 : -1;
+
+                if (this.difficulty === 'easy') {
+                    if (dist > 280) {
+                        this.currentAction = randomVal < 0.7 ? 'move_closer' : 'idle';
+                    } else if (dist < 120) {
+                        if (randomVal < 0.4) this.currentAction = 'attack';
+                        else if (randomVal < 0.7) this.currentAction = 'move_away';
+                        else this.currentAction = 'idle';
+                    } else {
+                        this.currentAction = randomVal < 0.5 ? 'skill1' : 'move_closer';
+                    }
+                    return;
+                }
+
+                if (this.difficulty === 'normal') {
+                    if (this.opponent.isAttacking && dist < 150 && randomVal < 0.3) {
+                        this.currentAction = 'crouch';
+                        return;
+                    }
+
+                    if (dist > 330) {
+                        this.currentAction = randomVal < 0.8 ? 'move_closer' : 'use_skill_range';
+                    } else if (dist < 130) {
+                        if (randomVal < 0.5) this.currentAction = 'attack';
+                        else if (randomVal < 0.8) this.currentAction = 'skill1';
+                        else this.currentAction = 'jump_away';
+                    } else {
+                        if (randomVal < 0.4) this.currentAction = 'use_skill_range';
+                        else if (randomVal < 0.8) this.currentAction = 'move_closer';
+                        else this.currentAction = 'crouch';
+                    }
+                    return;
+                }
+
+                if (this.difficulty === 'hard') {
+                    if (this.opponent.isAttacking && dist < 140 && randomVal < 0.75) {
+                        this.currentAction = 'crouch';
+                        return;
+                    }
+
+                    if (this.opponent.currentAttackType && dist > 200 && randomVal < 0.65) {
+                        this.currentAction = 'jump_closer';
+                        return;
+                    }
+
+                    if (dist > 300) {
+                        if (this.ai.cooldowns.skill2 === 0 && randomVal < 0.6) {
+                            this.currentAction = 'skill2';
+                        } else if (this.ai.cooldowns.skill1 === 0 && randomVal < 0.5) {
+                            this.currentAction = 'skill1';
+                        } else {
+                            this.currentAction = 'move_closer';
+                        }
+                    } else if (dist < 110) {
+                        if (this.ai.cooldowns.skill1 === 0 && randomVal < 0.45) {
+                            this.currentAction = 'skill1';
+                        } else if (randomVal < 0.8) {
+                            this.currentAction = 'attack';
+                        } else {
+                            this.currentAction = 'jump_away';
+                        }
+                    } else {
+                        if (randomVal < 0.5) this.currentAction = 'move_closer';
+                        else if (randomVal < 0.8) this.currentAction = 'attack';
+                        else this.currentAction = 'skill1';
+                    }
+                }
+            }
+
+            executeAction() {
+                const aiX = this.ai.x + this.ai.width / 2;
+                const oppX = this.opponent.x + this.opponent.width / 2;
+                const dirToOpp = oppX > aiX ? 1 : -1;
+
+                this.ai.crouch(false);
+
+                switch (this.currentAction) {
+                    case 'move_closer':
+                        gameManager.dispatchAction('p2', 'move', dirToOpp);
+                        break;
+                    case 'move_away':
+                        gameManager.dispatchAction('p2', 'move', -dirToOpp);
+                        break;
+                    case 'jump_closer':
+                        gameManager.dispatchAction('p2', 'move', dirToOpp);
+                        gameManager.dispatchAction('p2', 'jump');
+                        break;
+                    case 'jump_away':
+                        gameManager.dispatchAction('p2', 'move', -dirToOpp);
+                        gameManager.dispatchAction('p2', 'jump');
+                        break;
+                    case 'crouch':
+                        gameManager.dispatchAction('p2', 'crouch', true);
+                        break;
+                    case 'attack':
+                        gameManager.dispatchAction('p2', 'attack');
+                        break;
+                    case 'skill1':
+                        gameManager.dispatchAction('p2', 'skill1');
+                        break;
+                    case 'skill2':
+                        gameManager.dispatchAction('p2', 'skill2');
+                        break;
+                    case 'use_skill_range':
+                        if (this.ai.classData.skills.skill1.isProjectile && this.ai.cooldowns.skill1 === 0) {
+                            gameManager.dispatchAction('p2', 'skill1');
+                        } else if (this.ai.classData.skills.skill2.isProjectile && this.ai.cooldowns.skill2 === 0) {
+                            gameManager.dispatchAction('p2', 'skill2');
+                        } else {
+                            gameManager.dispatchAction('p2', 'move', dirToOpp);
+                        }
+                        break;
+                    case 'idle':
+                    default:
+                        break;
+                }
+            }
+        }
+
+        // --- 5. 統一輸入層 (Input Layer) 模組定義 ---
+        const InputLayer = {
+            states: {
+                p1: { left: false, right: false, crouch: false },
+                p2: { left: false, right: false, crouch: false }
+            },
+
+            init() {
+                window.addEventListener('keydown', (e) => {
+                    const k = e.key.toLowerCase();
+                    this.handleKeyboard(k, true);
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    const k = e.key.toLowerCase();
+                    this.handleKeyboard(k, false);
+                });
+            },
+
+            handleKeyboard(key, isDown) {
+                // Player 1 實體按鍵映射（R/F/D/G 移動，Q/W/E 戰鬥）
+                if (key === 'd') this.states.p1.left = isDown;
+                if (key === 'g') this.states.p1.right = isDown;
+                if (key === 'f') this.states.p1.crouch = isDown;
+                
+                if (isDown) {
+                    if (key === 'r') gameManager.dispatchAction('p1', 'jump');
+                    if (key === 'q') gameManager.dispatchAction('p1', 'attack');
+                    if (key === 'w') gameManager.dispatchAction('p1', 'skill1');
+                    if (key === 'e') gameManager.dispatchAction('p1', 'skill2');
+                }
+
+                // Player 2 實體按鍵映射（僅在 PVP 模式且實體鍵盤時啟用）
+                if (GameState.mode === 'pvp') {
+                    if (key === 'k') this.states.p2.left = isDown;
+                    if (key === ';') this.states.p2.right = isDown;
+                    if (key === 'l') this.states.p2.crouch = isDown;
+                    
+                    if (isDown) {
+                        if (key === 'o') gameManager.dispatchAction('p2', 'jump');
+                        if (key === 'p') gameManager.dispatchAction('p2', 'attack');
+                        if (key === '[') gameManager.dispatchAction('p2', 'skill1');
+                        if (key === ']') gameManager.dispatchAction('p2', 'skill2');
+                    }
+                }
+            },
+
+            setTouchState(player, action, isDown) {
+                if (this.states[player] && this.states[player][action] !== undefined) {
+                    this.states[player][action] = isDown;
+                }
+            }
+        };
+
+        // --- 6. 介面控制 UIManager ---
+        const UIManager = {
+            init() {
+                this.renderClassSelectors();
+                syncUI();
+            },
+
+            renderClassSelectors() {
+                const p1Grid = document.getElementById('p1-class-grid');
+                const p2Grid = document.getElementById('p2-class-grid');
+                p1Grid.innerHTML = '';
+                p2Grid.innerHTML = '';
+
+                for (let key in CharacterClasses) {
+                    const item = CharacterClasses[key];
+                    
+                    const p1Btn = document.createElement('button');
+                    p1Btn.id = `p1-btn-${key}`;
+                    p1Btn.className = `p-2 rounded-lg border text-lg font-bold flex flex-col items-center transition active:scale-95 duration-200 ${key === GameState.p1Class ? 'border-blue-500 bg-blue-950/40 neon-border' : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'}`;
+                    p1Btn.onclick = () => this.selectCharacter('p1', key);
+                    p1Btn.innerHTML = `<span>${item.icon}</span><span class="text-[10px] text-slate-300 font-semibold mt-0.5">${item.name}</span>`;
+                    p1Grid.appendChild(p1Btn);
+
+                    const p2Btn = document.createElement('button');
+                    p2Btn.id = `p2-btn-${key}`;
+                    p2Btn.className = `p-2 rounded-lg border text-lg font-bold flex flex-col items-center transition active:scale-95 duration-200 ${key === GameState.p2Class ? 'border-red-500 bg-red-950/40 neon-border-red' : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'}`;
+                    p2Btn.onclick = () => this.selectCharacter('p2', key);
+                    p2Btn.innerHTML = `<span>${item.icon}</span><span class="text-[10px] text-slate-300 font-semibold mt-0.5">${item.name}</span>`;
+                    p2Grid.appendChild(p2Btn);
+                }
+            },
+
+            selectCharacter(player, charKey) {
+                if (player === 'p1') {
+                    GameState.p1Class = charKey;
+                } else {
+                    GameState.p2Class = charKey;
+                }
+                this.renderClassSelectors();
+                syncUI();
+            },
+
+            parseSchemaEffects(skill) {
+                let effects = [];
+                if (skill.move && skill.move.enabled) {
+                    effects.push(`<span class="text-indigo-400 bg-indigo-950/60 px-1 py-0.2 rounded">位移 (${skill.type})</span>`);
+                } else {
+                    effects.push(`<span class="text-blue-400 bg-blue-950/60 px-1 py-0.2 rounded">原地物理打擊</span>`);
+                }
+
+                if (skill.statusEffect) {
+                    if (skill.statusEffect.slow > 0) {
+                        effects.push(`<span class="text-cyan-400 bg-cyan-950/60 px-1 py-0.2 rounded">命中減速 ${Math.round(skill.statusEffect.slow * 100)}% (${skill.statusEffect.duration}秒)</span>`);
+                    }
+                    if (skill.statusEffect.burn > 0) {
+                        effects.push(`<span class="text-orange-400 bg-orange-950/60 px-1 py-0.2 rounded">附加灼燒 DOT (${skill.statusEffect.duration}秒)</span>`);
+                    }
+                }
+                return effects.join(" ");
+            },
+
+            renderPreviewHTML(char, keyMap) {
+                return `
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">${char.icon}</span>
+                            <h4 class="font-bold text-slate-200 text-base">${char.name}</h4>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300">定位：${char.role}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300 bg-slate-950/50 p-1.5 rounded">
+                        <div>❤️ 最大生命值: <span class="text-indigo-400 font-bold">${char.hp}</span></div>
+                        <div>🏃 移動速度: <span class="text-indigo-400 font-bold">${char.speed}</span></div>
+                    </div>
+                    <div class="text-xs space-y-2 mt-1">
+                        <div class="bg-slate-950/30 p-1.5 rounded border border-slate-800/40">
+                            <div class="flex justify-between font-bold text-slate-200 text-[11px]">
+                                <span>⚔️ 普通攻擊：${char.skills.attack.name}</span>
+                                <span class="text-slate-400 font-mono text-[10px]">按鍵: ${keyMap.atk} | CD: ${char.skills.attack.cooldown}s</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                💥 基礎傷害: ${char.skills.attack.damage} | 效果: ${this.parseSchemaEffects(char.skills.attack)}
+                            </div>
+                        </div>
+                        <div class="bg-slate-950/30 p-1.5 rounded border border-slate-800/40">
+                            <div class="flex justify-between font-bold text-slate-200 text-[11px]">
+                                <span>🔮 技能 1：${char.skills.skill1.name}</span>
+                                <span class="text-slate-400 font-mono text-[10px]">按鍵: ${keyMap.s1} | CD: ${char.skills.skill1.cooldown}s</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                💥 技能傷害: ${char.skills.skill1.damage} | 效果: ${this.parseSchemaEffects(char.skills.skill1)}
+                            </div>
+                        </div>
+                        <div class="bg-slate-950/30 p-1.5 rounded border border-slate-800/40">
+                            <div class="flex justify-between font-bold text-slate-200 text-[11px]">
+                                <span>⚡ 技能 2：${char.skills.skill2.name}</span>
+                                <span class="text-slate-400 font-mono text-[10px]">按鍵: ${keyMap.s2} | CD: ${char.skills.skill2.cooldown}s</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                💥 重擊傷害: ${char.skills.skill2.damage} | 效果: ${this.parseSchemaEffects(char.skills.skill2)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            updatePreviews() {
+                const p1 = CharacterClasses[GameState.p1Class];
+                const p2 = CharacterClasses[GameState.p2Class];
+
+                const p1Keys = { atk: 'Q', s1: 'W', s2: 'E' };
+                const p2Keys = GameState.mode === 'ai' 
+                    ? { atk: '-', s1: '-', s2: '-' } 
+                    : { atk: 'P', s1: '[', s2: ']' };
+
+                document.getElementById('p1-preview').innerHTML = this.renderPreviewHTML(p1, p1Keys);
+                document.getElementById('p2-preview').innerHTML = this.renderPreviewHTML(p2, p2Keys);
+            },
+
+            updateLobbyView() {
+                // 由狀態機控制中的 syncUI 來統一渲染，大廳直接交給狀態機中繼
+                syncUI();
+            },
+
+            updateHUD(player1, player2) {
+                const p1HpPercent = (player1.hp / player1.maxHp) * 100;
+                const p2HpPercent = (player2.hp / player2.maxHp) * 100;
+
+                document.getElementById('hud-p1-hp').style.width = `${p1HpPercent}%`;
+                document.getElementById('hud-p2-hp').style.width = `${p2HpPercent}%`;
+
+                setTimeout(() => {
+                    const back1 = document.getElementById('hud-p1-hp-back');
+                    const back2 = document.getElementById('hud-p2-hp-back');
+                    if (back1) back1.style.width = `${p1HpPercent}%`;
+                    if (back2) back2.style.width = `${p2HpPercent}%`;
+                }, 300);
+
+                this.updateSkillIconCooldown('p1-skill1-cd', player1.cooldowns.skill1, player1.classData.skills.skill1.cooldown);
+                this.updateSkillIconCooldown('p1-skill2-cd', player1.cooldowns.skill2, player1.classData.skills.skill2.cooldown);
+                
+                if (GameState.touchEnabled) {
+                    this.updateSkillIconCooldown('touch-p1-s1-cd', player1.cooldowns.skill1, player1.classData.skills.skill1.cooldown);
+                    this.updateSkillIconCooldown('touch-p1-s2-cd', player1.cooldowns.skill2, player1.classData.skills.skill2.cooldown);
+                }
+
+                this.updateSkillIconCooldown('p2-skill1-cd', player2.cooldowns.skill1, player2.classData.skills.skill1.cooldown);
+                this.updateSkillIconCooldown('p2-skill2-cd', player2.cooldowns.skill2, player2.classData.skills.skill2.cooldown);
+
+                if (GameState.touchEnabled && GameState.mode === 'pvp') {
+                    this.updateSkillIconCooldown('touch-p2-s1-cd', player2.cooldowns.skill1, player2.classData.skills.skill1.cooldown);
+                    this.updateSkillIconCooldown('touch-p2-s2-cd', player2.cooldowns.skill2, player2.classData.skills.skill2.cooldown);
+                }
+            },
+
+            updateSkillIconCooldown(elementId, currentCD, maxCD) {
+                const el = document.getElementById(elementId);
+                if (!el) return;
+                if (currentCD > 0) {
+                    el.style.opacity = '1';
+                    el.innerText = currentCD.toFixed(1) + 's';
+                } else {
+                    el.style.opacity = '0';
+                }
+            },
+
+            showAnnouncement(text, duration, callback) {
+                const screen = document.getElementById('announcement-screen');
+                const label = document.getElementById('announcement-text');
+                
+                screen.classList.remove('hidden');
+                label.innerText = text;
+
+                if (text.length > 2) {
+                    label.className = "orbitron text-7xl md:text-8xl font-black tracking-widest text-red-500 animate-pulse neon-text-red";
+                } else {
+                    label.className = "orbitron text-8xl md:text-9xl font-black tracking-widest text-yellow-400 animate-bounce neon-text-blue";
+                }
+
+                setTimeout(() => {
+                    screen.classList.add('hidden');
+                    if (callback) callback();
+                }, duration);
+            }
+        };
+
+        // 選擇遊戲模式與難度
+        function selectMode(mode) {
+            setMode(mode);
+        }
+
+        function selectDifficulty(diff) {
+            GameState.difficulty = diff;
+            syncUI();
+        }
+
+        // 下載單機版
+        function downloadGameCode() {
+            const rawHTML = document.documentElement.outerHTML;
+            const blob = new Blob([`<!DOCTYPE html>\n` + rawHTML], { type: "text/html;charset=utf-8" });
+            const tempAnchor = document.createElement("a");
+            tempAnchor.href = URL.createObjectURL(blob);
+            tempAnchor.download = VERSION_INFO.downloadFilename;
+            document.body.appendChild(tempAnchor);
+            tempAnchor.click();
+            document.body.removeChild(tempAnchor);
+            URL.revokeObjectURL(tempAnchor.href);
+        }
+
+        // --- 7. 核心管理器 GameManager ---
+        class GameManager {
+            constructor() {
+                this.canvas = document.getElementById('game-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.p1 = null;
+                this.p2 = null;
+                this.aiCtrl = null;
+                this.projectiles = [];
+                this.particles = [];
+                
+                this.timerInterval = null;
+                this.keys = {};
+
+                // Hit Pause 停頓計時器 (影格數單位)
+                this.hitPauseTimer = 0;
+
+                this.setupEventListeners();
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            resizeCanvas() {
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+
+                let targetWidth = windowWidth - 32;
+                let targetHeight = (targetWidth * 9) / 16;
+
+                if (targetHeight > windowHeight - 160) {
+                    targetHeight = windowHeight - 160;
+                    targetWidth = (targetHeight * 16) / 9;
+                }
+
+                const container = document.getElementById('canvas-container');
+                container.style.width = `${targetWidth}px`;
+                container.style.height = `${targetHeight}px`;
+
+                this.canvas.width = GAME_WIDTH;
+                this.canvas.height = GAME_HEIGHT;
+            }
+
+            triggerHitstop() {
+                this.hitPauseTimer = 5;
+            }
+
+            setupEventListeners() {
+                // 初始化物理與虛擬按鍵輸入層
+                InputLayer.init();
+                this.setupTouchControls();
+            }
+
+            // 📱 虛擬按鈕多點觸控映射 (完全轉為 InputLayer Action 與 dispatchAction)
+            setupTouchControls() {
+                const bindTouchContinuous = (id, player, action) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    
+                    const startAction = (e) => {
+                        e.preventDefault();
+                        InputLayer.setTouchState(player, action, true);
+                    };
+                    
+                    const stopAction = (e) => {
+                        e.preventDefault();
+                        InputLayer.setTouchState(player, action, false);
+                    };
+                    
+                    el.addEventListener('touchstart', startAction, { passive: false });
+                    el.addEventListener('touchend', stopAction, { passive: false });
+                    el.addEventListener('touchcancel', stopAction, { passive: false });
+                    
+                    // 同時支援滑鼠點擊
+                    el.addEventListener('mousedown', (e) => {
+                        InputLayer.setTouchState(player, action, true);
+                    });
+                    el.addEventListener('mouseup', () => {
+                        InputLayer.setTouchState(player, action, false);
+                    });
+                    el.addEventListener('mouseleave', () => {
+                        InputLayer.setTouchState(player, action, false);
+                    });
+                };
+
+                const bindTouchInstant = (id, player, action) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    
+                    const triggerAction = (e) => {
+                        e.preventDefault();
+                        this.dispatchAction(player, action);
+                    };
+                    
+                    el.addEventListener('touchstart', triggerAction, { passive: false });
+                    el.addEventListener('mousedown', (e) => {
+                        this.dispatchAction(player, action);
+                    });
+                };
+
+                // Player 1 連續型移動指令綁定 (左、右、蹲)
+                bindTouchContinuous('touch-p1-left', 'p1', 'left');
+                bindTouchContinuous('touch-p1-right', 'p1', 'right');
+                bindTouchContinuous('touch-p1-down', 'p1', 'crouch');
+
+                // Player 1 瞬間單次型指令綁定 (跳躍、攻擊、技能1、技能2)
+                bindTouchInstant('touch-p1-up', 'p1', 'jump');
+                bindTouchInstant('touch-p1-attack', 'p1', 'attack');
+                bindTouchInstant('touch-p1-skill1', 'p1', 'skill1');
+                bindTouchInstant('touch-p1-skill2', 'p1', 'skill2');
+
+                // Player 2 連續型移動指令綁定 (左、右、蹲)
+                bindTouchContinuous('touch-p2-left', 'p2', 'left');
+                bindTouchContinuous('touch-p2-right', 'p2', 'right');
+                bindTouchContinuous('touch-p2-down', 'p2', 'crouch');
+
+                // Player 2 瞬間單次型指令綁定 (跳躍、攻擊、技能1、技能2)
+                bindTouchInstant('touch-p2-up', 'p2', 'jump');
+                bindTouchInstant('touch-p2-attack', 'p2', 'attack');
+                bindTouchInstant('touch-p2-skill1', 'p2', 'skill1');
+                bindTouchInstant('touch-p2-skill2', 'p2', 'skill2');
+            }
+
+            // 🎯 中央動作分度器 (Sole Actor Gatekeeper)
+            dispatchAction(playerId, action, value = null) {
+                const actor = (playerId === 'p1') ? this.p1 : this.p2;
+                const target = (playerId === 'p1') ? this.p2 : this.p1;
+                if (!actor || actor.hp <= 0) return;
+
+                switch (action) {
+                    case 'move':
+                        actor.move(value);
+                        break;
+                    case 'jump':
+                        actor.jump();
+                        break;
+                    case 'crouch':
+                        actor.crouch(value);
+                        break;
+                    case 'attack':
+                        {
+                            const proj = actor.useSkill('attack', target);
+                            if (proj) this.spawnProjectiles(proj);
+                        }
+                        break;
+                    case 'skill1':
+                        {
+                            const proj = actor.useSkill('skill1', target);
+                            if (proj) this.spawnProjectiles(proj);
+                        }
+                        break;
+                    case 'skill2':
+                        {
+                            const proj = actor.useSkill('skill2', target);
+                            if (proj) this.spawnProjectiles(proj);
+                        }
+                        break;
+                }
+            }
+
+            initMatch() {
+                this.p1 = new Player('p1', 150, 200, GameState.p1Class);
+                this.p2 = new Player('p2', 800, 200, GameState.p2Class);
+
+                document.getElementById('hud-p1-name').innerText = this.p1.classData.name;
+                document.getElementById('hud-p2-name').innerText = this.p2.classData.name;
+                document.getElementById('p1-skill1-icon').innerText = this.p1.classData.skills.skill1.icon;
+                document.getElementById('p1-skill2-icon').innerText = this.p1.classData.skills.skill2.icon;
+                document.getElementById('p2-skill1-icon').innerText = this.p2.classData.skills.skill1.icon;
+                document.getElementById('p2-skill2-icon').innerText = this.p2.classData.skills.skill2.icon;
+
+                // 更新 P1 與 P2 虛擬觸控按鈕的圖標
+                const p1TouchS1 = document.getElementById('touch-p1-s1-icon');
+                const p1TouchS2 = document.getElementById('touch-p1-s2-icon');
+                if (p1TouchS1) p1TouchS1.innerText = this.p1.classData.skills.skill1.icon || '🔮';
+                if (p1TouchS2) p1TouchS2.innerText = this.p1.classData.skills.skill2.icon || '⚡';
+
+                const p2TouchS1 = document.getElementById('touch-p2-s1-icon');
+                const p2TouchS2 = document.getElementById('touch-p2-s2-icon');
+                if (p2TouchS1) p2TouchS1.innerText = this.p2.classData.skills.skill1.icon || '🔥';
+                if (p2TouchS2) p2TouchS2.innerText = this.p2.classData.skills.skill2.icon || '☄️';
+
+                document.getElementById('p1-s1-key').innerText = 'W';
+                document.getElementById('p1-s2-key').innerText = 'E';
+
+                this.projectiles = [];
+                this.particles = [];
+                this.hitPauseTimer = 0;
+
+                UIManager.updateHUD(this.p1, this.p2);
+            }
+
+            spawnProjectiles(projList) {
+                if (projList && projList.length > 0) {
+                    this.projectiles.push(...projList);
+                }
+            }
+
+            createHitParticles(x, y, color) {
+                for (let i = 0; i < 15; i++) {
+                    const vx = (Math.random() - 0.5) * 8;
+                    const vy = (Math.random() - 0.5) * 8 - 2;
+                    const size = Math.random() * 4 + 2;
+                    const life = Math.random() * 20 + 15;
+                    this.particles.push(new Particle(x, y, color, vx, vy, size, life));
+                }
+            }
+
+            startTimer() {
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                this.timerInterval = setInterval(() => {
+                    if (GameState.isGameRunning && !GameState.isPaused) {
+                        GameState.timer--;
+                        document.getElementById('game-timer').innerText = GameState.timer;
+                        
+                        if (GameState.timer <= 0) {
+                            this.handleTimeOut();
+                        }
+                    }
+                }, 1000);
+            }
+
+            handleTimeOut() {
+                clearInterval(this.timerInterval);
+                if (this.p1.hp > this.p2.hp) {
+                    this.endGame('p1');
+                } else if (this.p2.hp > this.p1.hp) {
+                    this.endGame(GameState.mode === 'ai' ? 'ai' : 'p2');
+                } else {
+                    this.endGame('draw');
+                }
+            }
+
+            // 核心：由 InputLayer 的狀態值進行輪詢與 Action 集中發送 (不包含任何 DOM 操控)
+            handleInput() {
+                if (!this.p1 || !this.p2) return;
+
+                // Player 1 連續移動指令發送
+                if (InputLayer.states.p1.left) {
+                    this.dispatchAction('p1', 'move', -1);
+                } else if (InputLayer.states.p1.right) {
+                    this.dispatchAction('p1', 'move', 1);
+                }
+
+                // Player 1 連續下蹲指令發送
+                if (InputLayer.states.p1.crouch) {
+                    this.dispatchAction('p1', 'crouch', true);
+                } else {
+                    if (this.p1.isCrouching) {
+                        this.dispatchAction('p1', 'crouch', false);
+                    }
+                }
+
+                // Player 2 連續動作 (不論實體或是虛擬觸控)
+                if (GameState.mode === 'pvp') {
+                    if (InputLayer.states.p2.left) {
+                        this.dispatchAction('p2', 'move', -1);
+                    } else if (InputLayer.states.p2.right) {
+                        this.dispatchAction('p2', 'move', 1);
+                    }
+
+                    if (InputLayer.states.p2.crouch) {
+                        this.dispatchAction('p2', 'crouch', true);
+                    } else {
+                        if (this.p2.isCrouching) {
+                            this.dispatchAction('p2', 'crouch', false);
+                        }
+                    }
+                }
+            }
+
+            checkCollisions() {
+                // 1. P1 近戰 Hitbox 碰撞 P2 Hurtbox
+                if (this.p1.hitbox && this.rectCollision(this.p1.hitbox, this.p2.hurtbox)) {
+                    if (!this.p2.isHit) {
+                        const skillInfo = this.p1.classData.skills[this.p1.currentAttackType];
+                        this.p2.takeDamage(this.p1.hitbox.damage, this.p1.currentAttackType, this.p1.x);
+                        
+                        this.triggerHitstop();
+
+                        if (skillInfo && skillInfo.effects) {
+                            skillInfo.effects.forEach(eff => {
+                                this.p2.effects.push({ type: eff.type, value: eff.value, duration: eff.duration });
+                            });
+                        }
+                        this.createHitParticles(this.p2.x + this.p2.width/2, this.p2.y + this.p2.height/2, this.p1.color);
+                    }
+                }
+
+                // 2. P2 近戰 Hitbox 碰撞 P1 Hurtbox
+                if (this.p2.hitbox && this.rectCollision(this.p2.hitbox, this.p1.hurtbox)) {
+                    if (!this.p1.isHit) {
+                        const skillInfo = this.p2.classData.skills[this.p2.currentAttackType];
+                        this.p1.takeDamage(this.p2.hitbox.damage, this.p2.currentAttackType, this.p2.x);
+                        
+                        this.triggerHitstop();
+
+                        if (skillInfo && skillInfo.effects) {
+                            skillInfo.effects.forEach(eff => {
+                                this.p1.effects.push({ type: eff.type, value: eff.value, duration: eff.duration });
+                            });
+                        }
+                        this.createHitParticles(this.p1.x + this.p1.width/2, this.p1.y + this.p1.height/2, this.p2.color);
+                    }
+                }
+
+                // 3. 遠程投射物碰撞判定
+                this.projectiles.forEach((proj) => {
+                    if (!proj.active) return;
+
+                    if (proj.owner === 'p1') {
+                        if (this.rectCollision(proj.getHurtbox(), this.p2.hurtbox)) {
+                            this.p2.takeDamage(proj.damage, proj.skillType, proj.x);
+                            
+                            this.triggerHitstop();
+
+                            if (proj.skillData.effects) {
+                                proj.skillData.effects.forEach(eff => {
+                                    this.p2.effects.push({ type: eff.type, value: eff.value, duration: eff.duration });
+                                });
+                            }
+                            this.createHitParticles(proj.x, proj.y, proj.color);
+                            proj.active = false;
+                        }
+                    }
+                    else {
+                        if (this.rectCollision(proj.getHurtbox(), this.p1.hurtbox)) {
+                            this.p1.takeDamage(proj.damage, proj.skillType, proj.x);
+                            
+                            this.triggerHitstop();
+
+                            if (proj.skillData.effects) {
+                                proj.skillData.effects.forEach(eff => {
+                                    this.p1.effects.push({ type: eff.type, value: eff.value, duration: eff.duration });
+                                });
+                            }
+                            this.createHitParticles(proj.x, proj.y, proj.color);
+                            proj.active = false;
+                        }
+                    }
+                });
+
+                this.projectiles = this.projectiles.filter(p => p.active);
+            }
+
+            rectCollision(rect1, rect2) {
+                return (
+                    rect1.x < rect2.x + rect2.width &&
+                    rect1.x + rect1.width > rect2.x &&
+                    rect1.y < rect2.y + rect2.height &&
+                    rect1.y + rect1.height > rect2.y
+                );
+            }
+
+            loop() {
+                if (!GameState.isGameRunning || GameState.isPaused) return;
+
+                // Hit Pause 命中卡肉停頓
+                if (this.hitPauseTimer > 0) {
+                    this.hitPauseTimer--;
+                    
+                    this.particles.forEach(p => p.update());
+                    this.particles = this.particles.filter(p => p.life > 0);
+                    
+                    this.draw();
+                    requestAnimationFrame(() => this.loop());
+                    return;
+                }
+
+                this.handleInput();
+
+                if (this.aiCtrl) {
+                    this.aiCtrl.update();
+                }
+
+                this.p1.update();
+                this.p2.update();
+
+                this.projectiles.forEach(p => p.update());
+                this.particles.forEach(p => p.update());
+                this.particles = this.particles.filter(p => p.life > 0);
+
+                this.checkCollisions();
+
+                this.draw();
+
+                UIManager.updateHUD(this.p1, this.p2);
+
+                if (this.p1.hp <= 0) {
+                    this.endGame(GameState.mode === 'ai' ? 'ai' : 'p2');
+                } else if (this.p2.hp <= 0) {
+                    this.endGame('p1');
+                }
+
+                requestAnimationFrame(() => this.loop());
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                this.ctx.strokeStyle = '#1e293b';
+                this.ctx.lineWidth = 1;
+                for (let x = 0; x < GAME_WIDTH; x += 40) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, GROUND_Y);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < GROUND_Y; y += 40) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(GAME_WIDTH, y);
+                    this.ctx.stroke();
+                }
+
+                this.ctx.fillStyle = '#0f172a';
+                this.ctx.fillRect(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y);
+                this.ctx.strokeStyle = '#3b82f6';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, GROUND_Y);
+                this.ctx.lineTo(GAME_WIDTH, GROUND_Y);
+                this.ctx.stroke();
+
+                this.p1.draw(this.ctx);
+                this.p2.draw(this.ctx);
+
+                this.projectiles.forEach(p => p.draw(this.ctx));
+                this.particles.forEach(p => p.draw(this.ctx));
+            }
+
+            endGame(winner) {
+                GameState.isGameRunning = false;
+                GameState.winner = winner;
+                setScreen('victory');
+
+                if (this.timerInterval) clearInterval(this.timerInterval);
+
+                const vTitle = document.getElementById('victory-title');
+                const vDesc = document.getElementById('victory-desc');
+
+                if (winner === 'p1') {
+                    vTitle.innerText = "PLAYER 1 WIN";
+                    vTitle.className = "orbitron text-5xl md:text-6xl font-black tracking-widest text-blue-400 neon-text-blue";
+                    vDesc.innerText = `玩家一 [${this.p1.classData.name}] 取得了勝利！`;
+                } else if (winner === 'p2') {
+                    vTitle.innerText = "PLAYER 2 WIN";
+                    vTitle.className = "orbitron text-5xl md:text-6xl font-black tracking-widest text-red-400 neon-text-red";
+                    vDesc.innerText = `玩家二 [${this.p2.classData.name}] 取得了勝利！`;
+                } else if (winner === 'ai') {
+                    vTitle.innerText = "AI WIN";
+                    vTitle.className = "orbitron text-5xl md:text-6xl font-black tracking-widest text-red-500 neon-text-red";
+                    vDesc.innerText = `AI 電腦 [${this.p2.classData.name}] 贏得了本次對決！`;
+                } else {
+                    vTitle.innerText = "DRAW GAME";
+                    vTitle.className = "orbitron text-5xl md:text-6xl font-black tracking-widest text-yellow-400";
+                    vDesc.innerText = "雙方勢均力敵，以平手收場！";
+                }
+            }
+        }
+
+        const gameManager = new GameManager();
+
+        // 頁面加載完成時
+        window.onload = function() {
+            UIManager.init();
+
+            // 智慧偵測裝置是否支援觸控
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+            if (isTouchDevice) {
+                GameState.touchEnabled = true;
+                syncUI();
+            }
+
+            // 雙保險觸控事件
+            window.addEventListener('touchstart', function detectTouch() {
+                GameState.touchEnabled = true;
+                syncUI();
+                window.removeEventListener('touchstart', detectTouch);
+            }, { passive: true });
+        };
+
+        function startGame() {
+            GameState.winner = null;
+            GameState.timer = 99;
+            document.getElementById('game-timer').innerText = GameState.timer;
+
+            gameManager.initMatch();
+            
+            // 使用狀態機集中同步 input, AI, UI
+            syncInput();
+            syncAI();
+            setScreen('match');
+
+            let count = 3;
+            const runCountdown = () => {
+                if (count > 0) {
+                    UIManager.showAnnouncement(count.toString(), 900, () => {
+                        count--;
+                        runCountdown();
+                    });
+                } else {
+                    UIManager.showAnnouncement("FIGHT", 1000, () => {
+                        GameState.isGameRunning = true;
+                        gameManager.startTimer();
+                        gameManager.loop();
+                    });
+                }
+            };
+            runCountdown();
+        }
+
+        function resumeGame() {
+            GameState.isPaused = false;
+            setScreen('match');
+            gameManager.loop();
+        }
+
+        function togglePause() {
+            if (!GameState.isGameRunning) return;
+            GameState.isPaused = !GameState.isPaused;
+            if (GameState.isPaused) {
+                setScreen('pause');
+            } else {
+                resumeGame();
+            }
+        }
+
+        function exitToLobby() {
+            GameState.isGameRunning = false;
+            GameState.isPaused = false;
+            if (gameManager.timerInterval) clearInterval(gameManager.timerInterval);
+
+            syncInput();
+            setScreen('lobby');
+        }
+
+        function rematch() {
+            startGame();
+        }
+
+        function toggleDebug() {
+            debugMode = !debugMode;
+        }
+    </script>
+</body>
+</html>
